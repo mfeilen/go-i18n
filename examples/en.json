@@ -1,0 +1,16 @@
+{
+    "lang": [
+        {
+            "id": "module.function.title",
+            "text": "My Module title"
+        },
+        {
+            "id": "module.function.text",
+            "text": "My introduction text"
+        },
+        {
+            "id": "module.email.body",
+            "text": "Hello %s,\n\n, this is your registration confirmation email. Please use the following link to confirm your registration %s\n\nover and out"
+        }
+    ]
+}
