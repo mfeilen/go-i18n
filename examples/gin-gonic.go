@@ -13,14 +13,14 @@ func main() {
 	i18n.SetLangDir(`./lang`)   // default
 	i18n.SetLang(`en`)          // default
 	i18n.SetLangSuffix(`.json`) // default, lang filename is as [somelang].json
-	i18n.SetLogFunc(myLog)      // default uses https://pkg.go.dev/log
+	i18n.SetLogFunc(myLogFunc)  // default uses https://pkg.go.dev/log
 
 	// set router and and
 	router := gin.Default()
 	setMiddleware(router)
 	// set Gin gonic routes and start server - see gin documentation
 
-	// Usage in some Gin context / HandlerFunc: fmt.Println(i18n.Get(`my.text`))
+	// Usage in some Gin context / HandlerFunc: fmt.Println(i18n.Get(`module.function.title`))
 }
 
 // setMiddleware of the given router
@@ -33,7 +33,7 @@ func setMiddleware(router *gin.Engine) {
 	)
 }
 
-// setI18nFromBrowser handlerFunc will be triggered on each request
+// setLangFromBrowser handlerFunc will be triggered on each request
 func setLangFromBrowser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lang := c.Request.Header[`Accept-Language`]
@@ -49,14 +49,11 @@ func setLangFromBrowser() gin.HandlerFunc {
 		}
 		// fav lang list
 		langList := strings.Split(langStr[0], `,`)
-
-		// get the first one
-		firstLang := langList[0][0:2] // get the first 2 letters of the first language
-		i18n.SetLang(firstLang)
+		i18n.SetLang(langList[0]) // can be en|en-us|... json-file should be named accordingly
 		c.Next()
 	}
 }
 
-func myLog(msg string, logLevel string) {
+func myLogFunc(msg string, logLevel string) {
 	// do some logging
 }
