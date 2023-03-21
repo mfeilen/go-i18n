@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,7 +46,7 @@ type jsonLanguageDataElement struct {
 	Text string `json:"text"`
 }
 
-// init loads the language files that shall resists in ./lang/[lang].json
+// init configration and load language files
 func init() {
 
 	// set defaults
@@ -71,7 +70,7 @@ func init() {
 		}
 
 		// read file
-		jsonData, err := ioutil.ReadFile(filename) // the file is inside the local directory
+		jsonData, err := os.ReadFile(filename) // the file is inside the local directory
 		if err != nil {
 			logFunction(fmt.Sprintf(`translation file '%s' could not be read. File and rights ok?`, filename), LogLevelError)
 			continue
@@ -161,9 +160,9 @@ func Get(id string) string {
 // getLangFileList returns the language files w/o pathes
 func getLangFileList() []string {
 	var fileList []string
-	files, err := ioutil.ReadDir(langDir)
+	files, err := os.ReadDir(langDir)
 	if err != nil {
-		logFunction(fmt.Sprint(err), LogLevelError)
+		logFunction(err.Error(), LogLevelError)
 	}
 
 	for _, file := range files {

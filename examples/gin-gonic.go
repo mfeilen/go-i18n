@@ -3,9 +3,8 @@ package examples
 import (
 	"strings"
 
-	"github.com/mfeilen/go-i18n"
-
 	"github.com/gin-gonic/gin"
+	"github.com/mfeilen/go-i18n"
 )
 
 func main() {
@@ -30,25 +29,30 @@ func setMiddleware(router *gin.Engine) {
 	// Middleware stuff
 	router.Use(
 		gin.Recovery(),       // recovers from any panics and writes a 500 if there was one.
-		setI18nFromBrowser(), // detects the browser language and sets it
+		setLangFromBrowser(), // detects the browser language and sets it
 	)
 }
 
 // setI18nFromBrowser handlerFunc will be triggered on each request
-func setI18nFromBrowser() gin.HandlerFunc {
+func setLangFromBrowser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lang := c.Request.Header[`Accept-Language`]
-		if len(lang) > 0 {
-			langStr := strings.Split(lang[0], `;`)
-			if len(langStr) > 0 {
-				// fav lang list
-				langList := strings.Split(langStr[0], `,`)
-
-				// get the first one
-				firstLang := langList[0][0:2] // get the first 2 letters of the first language
-				i18n.SetLang(firstLang)
-			}
+		if len(lang) == 0 {
+			c.Next()
+			return
 		}
+
+		langStr := strings.Split(lang[0], `;`)
+		if len(langStr) == 0 {
+			c.Next()
+			return
+		}
+		// fav lang list
+		langList := strings.Split(langStr[0], `,`)
+
+		// get the first one
+		firstLang := langList[0][0:2] // get the first 2 letters of the first language
+		i18n.SetLang(firstLang)
 		c.Next()
 	}
 }
