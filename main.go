@@ -200,48 +200,48 @@ func logMsg(msg string, logLevel string) {
 }
 
 // IsLangFileConsistencyOk does consistency checks on language files
-func IsLangFileConsistencyOk(referenceLang string) bool {
-	if referenceLang == `` {
-		referenceLang = defaultLang
+func IsLangFileConsistencyOk() bool {
+	if curLang == `` {
+		curLang = defaultLang
 	}
 
-	_, exists := texts[referenceLang]
+	logMsg(fmt.Sprintf(`Using language '%s' as reference...`, curLang), LogLevelInfo)
 
+	_, exists := texts[curLang]
 	if !exists {
-		logMsg(fmt.Sprintf(`Reference language file for language '%s' does not exists. Please name another language`, referenceLang), LogLevelError)
+		logMsg(fmt.Sprintf(`Reference language file for language '%s' does not exists. Please name another language`, curLang), LogLevelError)
 		return false
 	}
 
-	logMsg(fmt.Sprintf(`Languages found: %s`, strings.Join(langFound, `, `)), LogLevelInfo)
-	logMsg(`checking consistency...`, LogLevelInfo)
+	logMsg(fmt.Sprintf(`Languages found: %s. Checking consistency...`, strings.Join(langFound, `, `)), LogLevelInfo)
 
-	referenceLangLength := len(texts[referenceLang])
+	referenceLangLength := len(texts[curLang])
 
 	ret := true
 	for lang, langtext := range texts {
-		if lang == referenceLang {
+		if lang == curLang {
 			continue
 		}
 
 		// check count
 		if referenceLangLength != len(langtext) {
-			logMsg(fmt.Sprintf(`Language file '%s' differes from the reference language '%s'`, lang, referenceLang), LogLevelWarn)
+			logMsg(fmt.Sprintf(`Language file '%s' (%d entries) differes from the reference language '%s' (%d entries)`, lang, len(langtext), curLang, referenceLangLength), LogLevelWarn)
 			ret = false
 		}
 
 		// check, if elements that exists in reference language file does also exists in the others
-		for key := range texts[referenceLang] {
+		for key := range texts[curLang] {
 			_, textExists := langtext[key]
 			if !textExists {
-				logMsg(fmt.Sprintf(`Language key '%s' was not found in language file %s`, key, lang), LogLevelWarn)
+				logMsg(fmt.Sprintf(`Language key '%s' was not found in language '%s'`, key, lang), LogLevelWarn)
 			}
 		}
 
 		// now the other way around: check if there are additional texts in other language files that are not included in the reference file
 		for key := range langtext {
-			_, textExists := texts[referenceLang][key]
+			_, textExists := texts[curLang][key]
 			if !textExists {
-				logMsg(fmt.Sprintf(`Language key '%s' in language '%s' does not exists in the reference language`, key, lang), LogLevelWarn)
+				logMsg(fmt.Sprintf(`Language key '%s' in language '%s' does not exists in the reference language '%s'`, key, lang, curLang), LogLevelWarn)
 			}
 		}
 	}
