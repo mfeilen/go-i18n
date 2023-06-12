@@ -1,6 +1,7 @@
-package examples
+package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,10 @@ func main() {
 	i18n.SetLang(`en`)          // default
 	i18n.SetLangSuffix(`.json`) // default, lang filename is as [somelang].json
 	i18n.SetLogFunc(myLogFunc)  // default uses https://pkg.go.dev/log
+
+	if !i18n.IsLangFileConsistencyOk(`en`) { // start the server anyway
+		fmt.Println(`Language files are not consistent. See log for more information`)
+	}
 
 	// set router and and
 	router := gin.Default()

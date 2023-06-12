@@ -11,6 +11,10 @@
         {
             "id": "module.email.body",
             "text": "Hello %s,\n\n, this is your registration confirmation email. Please use the following link to confirm your registration %s\n\nover and out"
+        },
+        {
+            "id": "module.email.signature",
+            "text": "This signature only exists in the original file but not in the german translation"
         }
     ]
 }

@@ -1,4 +1,4 @@
-package examples
+package main
 
 import (
 	"fmt"
@@ -12,6 +12,10 @@ func run() {
 	i18n.SetLang(`en`)               // default
 	i18n.SetLangSuffix(`.json`)      // default, lang filename is as [somelang].json
 	i18n.SetLogFunc(mySimpleLogFunc) // default uses https://pkg.go.dev/log
+
+	if !i18n.IsLangFileConsistencyOk(`en`) {
+		fmt.Println(`Language files are not consistent. See log for more information`)
+	}
 
 	// output data
 	fmt.Println(i18n.Get(`my.text`))

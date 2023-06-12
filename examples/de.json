@@ -1,0 +1,24 @@
+{
+    "lang": [
+        {
+            "id": "module.function.title",
+            "text": "Mein Modultext"
+        },
+        {
+            "id": "module.function.text",
+            "text": "Mein Intro-Text"
+        },
+        {
+            "id": "module.email.body",
+            "text": "Hallo %s,\n\n, dies ist Ihre Registrierungsbestätigung. Bitte verwenden Sie den folgenden Link, um Ihre Registrierung abzuschließen %s\n\nBis dann"
+        },
+        {
+            "id": "module.email.subject",
+            "text": "This subject only exists in the german translation, but not in the english original"
+        },
+        {
+            "id": "module.other.text",
+            "text": "This text does also not exists in the german translation creates a countable inconsistency in the language files"
+        }
+    ]
+}
