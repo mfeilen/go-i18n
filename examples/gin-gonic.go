@@ -8,15 +8,11 @@ import (
 	"github.com/mfeilen/go-i18n"
 )
 
-func main() {
+func ginGonicServer() {
 
-	// init i18n stuff
-	i18n.SetLangDir(`./lang`)   // default
-	i18n.SetLang(`en`)          // default
-	i18n.SetLangSuffix(`.json`) // default, lang filename is as [somelang].json
-	i18n.SetLogFunc(myLogFunc)  // default uses https://pkg.go.dev/log
-
-	if !i18n.IsLangFileConsistencyOk(`en`) { // start the server anyway
+	// init i18n stuff - see full set in example.go
+	i18n.SetLogFunc(myLogFunc)           // default uses https://pkg.go.dev/log
+	if !i18n.IsLangFileConsistencyOk() { // start the server anyway
 		fmt.Println(`Language files are not consistent. See log for more information`)
 	}
 
