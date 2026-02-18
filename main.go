@@ -59,9 +59,7 @@ func init() {
 	SetReadFileFunc(readFile)
 	SetLangSuffix(defaulLangSuffix)
 	SetLangDir(defaultLangDir)
-	SetLang(defaultLang)
 	texts = make(map[string]map[string]string)
-	texts[defaultLang] = make(map[string]string)
 
 	// load translations
 	for _, filename := range getLangFileList() {
@@ -100,6 +98,9 @@ func init() {
 			texts[lang][row.Id] = row.Text
 		}
 	}
+
+	// choose initial language after all language files were loaded
+	curLang = resolveDefaultLang()
 }
 
 // SetLangDir from which the files shall be read
@@ -116,52 +117,63 @@ func SetLangDir(dir string) {
 	langDir = strings.TrimRight(dir, `/\`) + `/`
 }
 
-// Set language
+// SetLang that shall be usesd if no language is given in Get()
 func SetLang(lang string) error {
-	curLang = lang
-
+	lang = strings.TrimSpace(lang)
 	if lang == `` {
-		return errors.New(`i18n: cannot set language, because given lang is empty`)
+		return errors.New(`i18n: cannot set empty language`)
 	}
 
-	// language file exists?
-	for _, filename := range getLangFileList() {
-		var langFound = strings.TrimSuffix(filename, langSuffix)
-		if lang == langFound {
-			return nil
-		}
-	}
-
-	logFunction(
-		fmt.Sprintf("i18n: language '%s' does not have any langauge file. Will try to fall back to I18N_DEFAULT_LANG\n", lang),
-		LogLevelWarn,
-	)
-
-	// now try to fallback to ENV defined language
-	curLang = os.Getenv(`I18N_DEFAULT_LANG`)
-	if curLang == `` {
-		logFunction(
-			fmt.Sprintf("i18n: I18N_DEFAULT_LANG is also undefined. Running out of options. Now using default language '%s' \n", defaultLang),
-			LogLevelError,
-		)
-		curLang = defaultLang // still unsuccessful?
+	// check if the language file exists, then load it
+	if _, exists := texts[lang]; exists {
+		curLang = lang
 		return nil
 	}
 
-	for _, filename := range getLangFileList() {
-		var langFound = strings.TrimSuffix(filename, langSuffix)
-		if curLang == langFound {
-			return nil
+	logFunction(
+		fmt.Sprintf("i18n: language '%s' is not loaded. Falling back to default language", lang),
+		LogLevelWarn,
+	)
+
+	curLang = resolveDefaultLang()
+	return nil
+}
+
+func resolveDefaultLang() string {
+
+	// fallback to the default language configured in the env file
+	envLang := strings.TrimSpace(os.Getenv(`I18N_DEFAULT_LANG`))
+	if envLang != `` {
+		if _, exists := texts[envLang]; exists {
+			return envLang
+		}
+		logFunction(
+			fmt.Sprintf("i18n: I18N_DEFAULT_LANG '%s' is not loaded. Trying fallback '%s'", envLang, defaultLang),
+			LogLevelWarn,
+		)
+	}
+
+	// fallback to default language (hardcoded in package)
+	if _, exists := texts[defaultLang]; exists {
+		return defaultLang
+	}
+
+	// fallback to first loaded language to keep the package usable
+	for _, lang := range langFound {
+		if _, exists := texts[lang]; exists {
+			logFunction(
+				fmt.Sprintf("i18n: default language '%s' is not loaded. Using first loaded language '%s'", defaultLang, lang),
+				LogLevelWarn,
+			)
+			return lang
 		}
 	}
 
 	logFunction(
-		fmt.Sprintf("i18n: I18N_DEFAULT_LANG '%s' does not have any language file. Falling back to default language '%s'", curLang, defaultLang),
-		LogLevelError,
+		fmt.Sprintf("i18n: no language files loaded. Using fallback language '%s'", defaultLang),
+		LogLevelWarn,
 	)
-	curLang = defaultLang
-
-	return nil
+	return defaultLang
 }
 
 // overwrite log function
