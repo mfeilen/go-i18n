@@ -1,0 +1,24 @@
+{
+  "lang": [
+    {
+      "id": "module.function.title",
+      "text": "我的模組文字"
+    },
+    {
+      "id": "module.function.text",
+      "text": "我的介紹文字"
+    },
+    {
+      "id": "module.email.body",
+      "text": "%s 您好，\n\n這是您的註冊確認通知。請使用以下連結完成註冊: %s\n\n期待再次見到您"
+    },
+    {
+      "id": "module.email.subject",
+      "text": "註冊確認"
+    },
+    {
+      "id": "module.other.text",
+      "text": "這段文字同樣只用於示範，也可用來測試語言檔案的一致性檢查"
+    }
+  ]
+}

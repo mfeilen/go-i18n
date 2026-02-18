@@ -33,10 +33,13 @@ var (
 	langDir string
 	// the expected file suffix for the language files
 	langSuffix string
+	// readfile func - in case it should be overwritten
+	readFileFunction readFileFunc
 )
 
 // logFunc that shall be used for loggihng
 type logFunc func(msg string, logLevel string)
+type readFileFunc func(name string) ([]byte, error)
 
 // jsonLanguageData contains the parsed data
 type jsonLanguageData struct {
@@ -53,6 +56,7 @@ func init() {
 
 	// set defaults
 	SetLogFunc(logMsg)
+	SetReadFileFunc(readFile)
 	SetLangSuffix(defaulLangSuffix)
 	SetLangDir(defaultLangDir)
 	SetLang(defaultLang)
@@ -68,21 +72,21 @@ func init() {
 		filename = langDir + filename
 		_, err := os.Stat(filename)
 		if err != nil {
-			logFunction(fmt.Sprintf(`translation file '%s' could not be accessed. File and rights ok?`, filename), LogLevelError)
+			logFunction(fmt.Sprintf(`i18n: translation file '%s' could not be accessed. File and rights ok?`, filename), LogLevelError)
 			continue
 		}
 
 		// read file
-		jsonData, err := os.ReadFile(filename) // the file is inside the local directory
+		jsonData, err := readFileFunction(filename) // the file is inside the local directory
 		if err != nil {
-			logFunction(fmt.Sprintf(`translation file '%s' could not be read. File and rights ok?`, filename), LogLevelError)
+			logFunction(fmt.Sprintf(`i18n: translation file '%s' could not be read. File and rights ok?`, filename), LogLevelError)
 			continue
 		}
 
 		// parse file
 		langData := &jsonLanguageData{}
 		if err := json.Unmarshal(jsonData, langData); err != nil {
-			logFunction(fmt.Sprintf(`translation for language '%s' has an invalid file format. JSON structure ok?`, lang), LogLevelError)
+			logFunction(fmt.Sprintf(`i18n: translation for language '%s' has an invalid file format. JSON structure ok?`, lang), LogLevelError)
 			continue
 		}
 
@@ -100,7 +104,16 @@ func init() {
 
 // SetLangDir from which the files shall be read
 func SetLangDir(dir string) {
-	langDir = dir + `/`
+	if strings.TrimSpace(dir) == `` {
+		langDir = defaultLangDir + `/`
+		logFunction(
+			fmt.Sprintf("i18n: empty language directory provided. Falling back to default '%s'", langDir),
+			LogLevelWarn,
+		)
+		return
+	}
+
+	langDir = strings.TrimRight(dir, `/\`) + `/`
 }
 
 // Set language
@@ -108,7 +121,7 @@ func SetLang(lang string) error {
 	curLang = lang
 
 	if lang == `` {
-		return errors.New(`i18n SetLang: cannot use empty language`)
+		return errors.New(`i18n: cannot set language, because given lang is empty`)
 	}
 
 	// language file exists?
@@ -120,7 +133,7 @@ func SetLang(lang string) error {
 	}
 
 	logFunction(
-		fmt.Sprintf("language '%s' does not have any langauge file. Will try to fall back to I18N_DEFAULT_LANG\n", lang),
+		fmt.Sprintf("i18n: language '%s' does not have any langauge file. Will try to fall back to I18N_DEFAULT_LANG\n", lang),
 		LogLevelWarn,
 	)
 
@@ -128,11 +141,25 @@ func SetLang(lang string) error {
 	curLang = os.Getenv(`I18N_DEFAULT_LANG`)
 	if curLang == `` {
 		logFunction(
-			fmt.Sprintf("I18N_DEFAULT_LANG is also undefined. Running out of options. Now using default language '%s' \n", defaultLang),
+			fmt.Sprintf("i18n: I18N_DEFAULT_LANG is also undefined. Running out of options. Now using default language '%s' \n", defaultLang),
 			LogLevelError,
 		)
 		curLang = defaultLang // still unsuccessful?
+		return nil
 	}
+
+	for _, filename := range getLangFileList() {
+		var langFound = strings.TrimSuffix(filename, langSuffix)
+		if curLang == langFound {
+			return nil
+		}
+	}
+
+	logFunction(
+		fmt.Sprintf("i18n: I18N_DEFAULT_LANG '%s' does not have any language file. Falling back to default language '%s'", curLang, defaultLang),
+		LogLevelError,
+	)
+	curLang = defaultLang
 
 	return nil
 }
@@ -142,17 +169,26 @@ func SetLogFunc(f logFunc) {
 	logFunction = f
 }
 
+func SetReadFileFunc(f readFileFunc) {
+	readFileFunction = f
+}
+
 // Set language
 func SetLangSuffix(suffix string) {
 	langSuffix = suffix
 }
 
-func Get(id string) string {
-	if curLang == `` {
-		return `No language defined. Set language first`
+func Get(id string, lang ...string) string {
+	selectedLang := curLang
+	if len(lang) > 0 && lang[0] != `` {
+		selectedLang = lang[0]
 	}
 
-	text, exists := texts[curLang][id]
+	if selectedLang == `` {
+		return `i18n: No language defined. Set language first`
+	}
+
+	text, exists := texts[selectedLang][id]
 	if !exists {
 		return id
 	}
@@ -199,21 +235,25 @@ func logMsg(msg string, logLevel string) {
 	}
 }
 
+func readFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+
 // IsLangFileConsistencyOk does consistency checks on language files
 func IsLangFileConsistencyOk() bool {
 	if curLang == `` {
 		curLang = defaultLang
 	}
 
-	logMsg(fmt.Sprintf(`Using language '%s' as reference...`, curLang), LogLevelInfo)
+	logFunction(fmt.Sprintf(`Using language '%s' as reference...`, curLang), LogLevelInfo)
 
 	_, exists := texts[curLang]
 	if !exists {
-		logMsg(fmt.Sprintf(`Reference language file for language '%s' does not exists. Please name another language`, curLang), LogLevelError)
+		logFunction(fmt.Sprintf(`Reference language file for language '%s' does not exists. Please name another language`, curLang), LogLevelError)
 		return false
 	}
 
-	logMsg(fmt.Sprintf(`Languages found: %s. Checking consistency...`, strings.Join(langFound, `, `)), LogLevelInfo)
+	logFunction(fmt.Sprintf(`Languages found: %s. Checking consistency...`, strings.Join(langFound, `, `)), LogLevelInfo)
 
 	referenceLangLength := len(texts[curLang])
 
@@ -225,7 +265,7 @@ func IsLangFileConsistencyOk() bool {
 
 		// check count
 		if referenceLangLength != len(langtext) {
-			logMsg(fmt.Sprintf(`Language file '%s' (%d entries) differes from the reference language '%s' (%d entries)`, lang, len(langtext), curLang, referenceLangLength), LogLevelWarn)
+			logFunction(fmt.Sprintf(`Language file '%s' (%d entries) differes from the reference language '%s' (%d entries)`, lang, len(langtext), curLang, referenceLangLength), LogLevelWarn)
 			ret = false
 		}
 
@@ -233,7 +273,8 @@ func IsLangFileConsistencyOk() bool {
 		for key := range texts[curLang] {
 			_, textExists := langtext[key]
 			if !textExists {
-				logMsg(fmt.Sprintf(`Language key '%s' was not found in language '%s'`, key, lang), LogLevelWarn)
+				logFunction(fmt.Sprintf(`Language key '%s' was not found in language '%s'`, key, lang), LogLevelWarn)
+				ret = false
 			}
 		}
 
@@ -241,7 +282,8 @@ func IsLangFileConsistencyOk() bool {
 		for key := range langtext {
 			_, textExists := texts[curLang][key]
 			if !textExists {
-				logMsg(fmt.Sprintf(`Language key '%s' in language '%s' does not exists in the reference language '%s'`, key, lang, curLang), LogLevelWarn)
+				logFunction(fmt.Sprintf(`Language key '%s' in language '%s' does not exists in the reference language '%s'`, key, lang, curLang), LogLevelWarn)
+				ret = false
 			}
 		}
 	}

@@ -6,19 +6,19 @@
         },
         {
             "id": "module.function.text",
-            "text": "Mein Intro-Text"
+            "text": "Mein Einführungstext"
         },
         {
             "id": "module.email.body",
-            "text": "Hallo %s,\n\n, dies ist Ihre Registrierungsbestätigung. Bitte verwenden Sie den folgenden Link, um Ihre Registrierung abzuschließen %s\n\nBis dann"
+            "text": "Hallo %s,\n\nDies ist Ihre Registrierungsbestätigung. Bitte verwenden Sie den folgenden Link, um Ihre Registrierung abzuschließen: %s\n\nBis bald"
         },
         {
             "id": "module.email.subject",
-            "text": "This subject only exists in the german translation, but not in the english original"
+            "text": "Dieser Betreff existiert nur in der deutschen Übersetzung, jedoch nicht im englischen Original"
         },
         {
             "id": "module.other.text",
-            "text": "This text does also not exists in the german translation creates a countable inconsistency in the language files"
+            "text": "Dieser Text existiert ebenfalls nicht in der deutschen Übersetzung und erzeugt eine zählbare Inkonsistenz in den Sprachdateien"
         }
     ]
 }

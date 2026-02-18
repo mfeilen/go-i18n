@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ func ginGonicServer() {
 
 	// init i18n stuff - see full set in example.go
 	i18n.SetLogFunc(myLogFunc)           // default uses https://pkg.go.dev/log
+	i18n.SetReadFileFunc(myReadFileFunc)     // optional: provide your own file reader
 	if !i18n.IsLangFileConsistencyOk() { // start the server anyway
 		fmt.Println(`Language files are not consistent. See log for more information`)
 	}
@@ -57,4 +59,9 @@ func setLangFromBrowser() gin.HandlerFunc {
 
 func myLogFunc(msg string, logLevel string) {
 	// do some logging
+}
+
+func myReadFileFunc(name string) ([]byte, error) {
+	// custom hook, e.g. metrics, alternate FS, decryption, etc.
+	return os.ReadFile(name)
 }
