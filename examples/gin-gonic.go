@@ -13,7 +13,8 @@ func ginGonicServer() {
 
 	// init i18n stuff - see full set in example.go
 	i18n.SetLogFunc(myLogFunc)           // default uses https://pkg.go.dev/log
-	i18n.SetReadFileFunc(myReadFileFunc)     // optional: provide your own file reader
+	i18n.SetReadFileFunc(myReadFileFunc) // optional: provide your own file reader
+	i18n.Init()                          // optional; otherwise load happens lazily
 	if !i18n.IsLangFileConsistencyOk() { // start the server anyway
 		fmt.Println(`Language files are not consistent. See log for more information`)
 	}
