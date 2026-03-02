@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -35,6 +37,10 @@ var (
 	langSuffix string
 	// readfile func - in case it should be overwritten
 	readFileFunction readFileFunc
+	// optional fs source for embedded files
+	fileSystem fs.FS
+	// indicates if translations were loaded with current config
+	isLoaded bool
 )
 
 // logFunc that shall be used for loggihng
@@ -51,7 +57,7 @@ type jsonLanguageDataElement struct {
 	Text string `json:"text"`
 }
 
-// init configration and load language files
+// init configuration defaults (translations are loaded lazily or via Init).
 func init() {
 
 	// set defaults
@@ -60,47 +66,8 @@ func init() {
 	SetLangSuffix(defaulLangSuffix)
 	SetLangDir(defaultLangDir)
 	texts = make(map[string]map[string]string)
-
-	// load translations
-	for _, filename := range getLangFileList() {
-		logFunction(fmt.Sprintf(`reading language file '%s'`, filename), `info`)
-
-		var lang = strings.TrimSuffix(filename, langSuffix)
-		langFound = append(langFound, lang)
-		filename = langDir + filename
-		_, err := os.Stat(filename)
-		if err != nil {
-			logFunction(fmt.Sprintf(`i18n: translation file '%s' could not be accessed. File and rights ok?`, filename), LogLevelError)
-			continue
-		}
-
-		// read file
-		jsonData, err := readFileFunction(filename) // the file is inside the local directory
-		if err != nil {
-			logFunction(fmt.Sprintf(`i18n: translation file '%s' could not be read. File and rights ok?`, filename), LogLevelError)
-			continue
-		}
-
-		// parse file
-		langData := &jsonLanguageData{}
-		if err := json.Unmarshal(jsonData, langData); err != nil {
-			logFunction(fmt.Sprintf(`i18n: translation for language '%s' has an invalid file format. JSON structure ok?`, lang), LogLevelError)
-			continue
-		}
-
-		_, exists := texts[lang]
-		if !exists {
-			texts[lang] = make(map[string]string)
-		}
-
-		// set language values
-		for _, row := range langData.Rows {
-			texts[lang][row.Id] = row.Text
-		}
-	}
-
-	// choose initial language after all language files were loaded
-	curLang = resolveDefaultLang()
+	langFound = nil
+	isLoaded = false
 }
 
 // SetLangDir from which the files shall be read
@@ -115,10 +82,13 @@ func SetLangDir(dir string) {
 	}
 
 	langDir = strings.TrimRight(dir, `/\`) + `/`
+	isLoaded = false
 }
 
 // SetLang that shall be usesd if no language is given in Get()
 func SetLang(lang string) error {
+	ensureLoaded()
+
 	lang = strings.TrimSpace(lang)
 	if lang == `` {
 		return errors.New(`i18n: cannot set empty language`)
@@ -183,14 +153,29 @@ func SetLogFunc(f logFunc) {
 
 func SetReadFileFunc(f readFileFunc) {
 	readFileFunction = f
+	isLoaded = false
 }
 
 // Set language
 func SetLangSuffix(suffix string) {
 	langSuffix = suffix
+	isLoaded = false
+}
+
+// SetFS sets an alternative file system source for language files (e.g. embed.FS).
+func SetFS(fsys fs.FS) {
+	fileSystem = fsys
+	isLoaded = false
+}
+
+// Init triggers loading/reloading language files with the current configuration.
+func Init() {
+	loadTranslations()
 }
 
 func Get(id string, lang ...string) string {
+	ensureLoaded()
+
 	selectedLang := curLang
 	if len(lang) > 0 && lang[0] != `` {
 		selectedLang = lang[0]
@@ -211,9 +196,18 @@ func Get(id string, lang ...string) string {
 // getLangFileList returns the language files w/o pathes
 func getLangFileList() []string {
 	var fileList []string
-	files, err := os.ReadDir(langDir)
+	var files []fs.DirEntry
+	var err error
+
+	if fileSystem != nil {
+		files, err = fs.ReadDir(fileSystem, getFSDirPath())
+	} else {
+		files, err = os.ReadDir(langDir)
+	}
+
 	if err != nil {
 		logFunction(err.Error(), LogLevelError)
+		return fileList
 	}
 
 	for _, file := range files {
@@ -251,8 +245,82 @@ func readFile(name string) ([]byte, error) {
 	return os.ReadFile(name)
 }
 
+func ensureLoaded() {
+	if isLoaded {
+		return
+	}
+	loadTranslations()
+}
+
+func loadTranslations() {
+	texts = make(map[string]map[string]string)
+	langFound = nil
+
+	for _, filename := range getLangFileList() {
+		logFunction(fmt.Sprintf(`reading language file '%s'`, filename), LogLevelInfo)
+
+		lang := strings.TrimSuffix(filename, langSuffix)
+		langFound = append(langFound, lang)
+
+		jsonData, err := readLangFile(filename)
+		if err != nil {
+			logFunction(fmt.Sprintf(`i18n: translation file '%s' could not be read. File and rights ok?`, filename), LogLevelError)
+			continue
+		}
+
+		langData := &jsonLanguageData{}
+		if err := json.Unmarshal(jsonData, langData); err != nil {
+			logFunction(fmt.Sprintf(`i18n: translation for language '%s' has an invalid file format. JSON structure ok?`, lang), LogLevelError)
+			continue
+		}
+
+		if _, exists := texts[lang]; !exists {
+			texts[lang] = make(map[string]string)
+		}
+
+		for _, row := range langData.Rows {
+			texts[lang][row.Id] = row.Text
+		}
+	}
+
+	curLang = resolveDefaultLang()
+	isLoaded = true
+}
+
+func readLangFile(filename string) ([]byte, error) {
+	if fileSystem != nil {
+		return fs.ReadFile(fileSystem, getFSDirPath()+`/`+filename)
+	}
+
+	fullPath := langDir + filename
+	if _, err := os.Stat(fullPath); err != nil {
+		return nil, err
+	}
+
+	return readFileFunction(fullPath)
+}
+
+func getFSDirPath() string {
+	dir := strings.TrimSpace(langDir)
+	if dir == `` {
+		dir = defaultLangDir
+	}
+
+	dir = strings.ReplaceAll(dir, `\`, `/`)
+	dir = strings.TrimPrefix(dir, `./`)
+	dir = strings.TrimPrefix(dir, `/`)
+	dir = strings.TrimSuffix(dir, `/`)
+	if dir == `` {
+		return `.`
+	}
+
+	return path.Clean(dir)
+}
+
 // IsLangFileConsistencyOk does consistency checks on language files
 func IsLangFileConsistencyOk() bool {
+	ensureLoaded()
+
 	if curLang == `` {
 		curLang = defaultLang
 	}

@@ -8,6 +8,25 @@ git clone git@github.com:mfeilen/i18n.git
 ```
 Follow exampe as described here: [Default example](examples/example.go)
 
+### Explicit initialization
+`i18n` no longer depends on eager loading in `init()`. Configure first, then call `Init()` (or let it load lazily on first use):
+
+```go
+i18n.SetLangDir("./lang")
+i18n.SetLangSuffix(".json")
+i18n.Init()
+```
+
+### Using embed.FS
+```go
+//go:embed lang/*.json
+var langFS embed.FS
+
+i18n.SetFS(langFS)
+i18n.SetLangDir("lang")
+i18n.Init()
+```
+
 ## Env parameters
 | ENV param | usage | example | default |
 | --- | --- | --- | --- |
